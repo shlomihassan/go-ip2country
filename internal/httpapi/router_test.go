@@ -46,3 +46,21 @@ func TestNewRouter_GlobalRateLimitBlocks(t *testing.T) {
 
 	assert.Equal(t, http.StatusTooManyRequests, rec.Code)
 }
+
+func TestNewRouter_HealthCheckNotRateLimited(t *testing.T) {
+	router := httpapi.NewRouter(fakeLocator{}, fakeLimiter{allow: false}, fakeLimiter{allow: false})
+
+	healthReq := httptest.NewRequest(http.MethodGet, "/healthz", nil)
+	healthReq.RemoteAddr = "203.0.113.1:12345"
+	healthRec := httptest.NewRecorder()
+	router.ServeHTTP(healthRec, healthReq)
+
+	assert.Equal(t, http.StatusOK, healthRec.Code)
+
+	findCountryReq := httptest.NewRequest(http.MethodGet, "/v1/find-country?ip=8.8.8.8", nil)
+	findCountryReq.RemoteAddr = "203.0.113.1:12345"
+	findCountryRec := httptest.NewRecorder()
+	router.ServeHTTP(findCountryRec, findCountryReq)
+
+	assert.Equal(t, http.StatusTooManyRequests, findCountryRec.Code)
+}
