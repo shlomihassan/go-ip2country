@@ -113,8 +113,11 @@ expired. `Close()` stops the ticker; `main.go` calls it during graceful shutdown
 
 ### `httpapi` package
 
-- `router.go` builds the chi router: `slog` request logger middleware → global
-  rate-limit middleware → per-IP rate-limit middleware → route table.
+- `router.go` builds the chi router: global rate-limit middleware → per-IP
+  rate-limit middleware → route table. Per-request access logging is not
+  included (out of scope for the exercise — easy to add later as another chi
+  middleware); `main.go`'s `slog` logger already covers startup, shutdown, and
+  configuration/datastore errors.
 - `middleware.go` defines one rate-limit middleware constructor,
   `RateLimit(limiter ratelimit.Limiter, keyFunc func(*http.Request) string) func(http.Handler) http.Handler`,
   used twice: once with a keyFunc returning `""` (global), once returning the
