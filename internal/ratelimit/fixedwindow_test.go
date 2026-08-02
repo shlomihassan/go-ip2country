@@ -26,3 +26,12 @@ func TestFixedWindow_TracksKeysIndependently(t *testing.T) {
 	assert.True(t, f.Allow("b"), "a different key should have its own budget")
 	assert.False(t, f.Allow("a"), "key a is already at its limit")
 }
+
+func TestFixedWindow_CloseIsIdempotent(t *testing.T) {
+	f := ratelimit.NewFixedWindow(1, time.Second)
+
+	// Should not panic when called twice
+	f.Close()
+	f.Close()
+	assert.True(t, true, "Close() should be safe to call multiple times")
+}

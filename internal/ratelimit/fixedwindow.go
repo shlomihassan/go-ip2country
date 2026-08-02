@@ -15,12 +15,13 @@ type windowCounter struct {
 }
 
 type FixedWindow struct {
-	mu       sync.Mutex
-	limit    int
-	window   time.Duration
-	counters map[string]*windowCounter
-	now      func() time.Time
-	stop     chan struct{}
+	mu        sync.Mutex
+	limit     int
+	window    time.Duration
+	counters  map[string]*windowCounter
+	now       func() time.Time
+	stop      chan struct{}
+	closeOnce sync.Once
 }
 
 func NewFixedWindow(limit int, window time.Duration) *FixedWindow {
@@ -81,5 +82,7 @@ func (f *FixedWindow) sweep(now time.Time) {
 }
 
 func (f *FixedWindow) Close() {
-	close(f.stop)
+	f.closeOnce.Do(func() {
+		close(f.stop)
+	})
 }
