@@ -1193,17 +1193,26 @@ import (
 
 func NewRouter(locator geo.Locator, globalLimiter, perIPLimiter ratelimit.Limiter) http.Handler {
 	r := chi.NewRouter()
-	r.Use(RateLimit(globalLimiter, GlobalKey))
-	r.Use(RateLimit(perIPLimiter, PerIPKey))
 
 	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
-	r.Get("/v1/find-country", FindCountry(locator))
+
+	r.Group(func(r chi.Router) {
+		r.Use(RateLimit(globalLimiter, GlobalKey))
+		r.Use(RateLimit(perIPLimiter, PerIPKey))
+		r.Get("/v1/find-country", FindCountry(locator))
+	})
 
 	return r
 }
 ```
+
+Note: rate-limit middleware is scoped to `/v1/find-country` via `r.Group()`, not applied
+router-wide via top-level `r.Use()` — chi's `Mux.Use()` builds a single handler chain
+covering every route on the mux regardless of registration order, so a top-level `r.Use()`
+would rate-limit `/healthz` too, contradicting the design doc's "no rate limiting" liveness
+requirement.
 
 - [ ] **Step 13: Run test, verify it passes**
 
