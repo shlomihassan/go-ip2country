@@ -12,6 +12,13 @@ import (
 func NewRouter(locator geo.Locator, globalLimiter, perIPLimiter ratelimit.Limiter) http.Handler {
 	r := chi.NewRouter()
 
+	r.NotFound(func(w http.ResponseWriter, _ *http.Request) {
+		writeError(w, http.StatusNotFound, "route not found")
+	})
+	r.MethodNotAllowed(func(w http.ResponseWriter, _ *http.Request) {
+		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+	})
+
 	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})

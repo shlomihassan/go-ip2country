@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"net/http"
 	"os"
@@ -52,7 +53,7 @@ func main() {
 
 	go func() {
 		logger.Info("starting server", "port", cfg.ServerPort)
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			logger.Error("server error", "error", err)
 			os.Exit(1)
 		}
@@ -67,6 +68,8 @@ func main() {
 	defer cancel()
 	if err := srv.Shutdown(ctx); err != nil {
 		logger.Error("graceful shutdown failed", "error", err)
+	} else {
+		logger.Info("shutdown complete")
 	}
 }
 

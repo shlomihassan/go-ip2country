@@ -38,3 +38,11 @@ func TestNew_MissingFileFailsToLoad(t *testing.T) {
 	_, err := geocsv.New(config.Config{DatastoreCSVPath: "testdata/does-not-exist.csv"})
 	assert.Error(t, err)
 }
+
+func TestCSVLocatorIsRegistered(t *testing.T) {
+	locator, err := geo.New("csv", config.Config{DatastoreCSVPath: "testdata/valid.csv"})
+	require.NoError(t, err)
+	loc, err := locator.Lookup(net.ParseIP("8.8.8.8"))
+	require.NoError(t, err)
+	assert.Equal(t, "USA", loc.Country)
+}

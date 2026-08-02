@@ -1,11 +1,13 @@
 package httpapi_test
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"go-ip2country/internal/geo"
 	"go-ip2country/internal/httpapi"
@@ -63,4 +65,34 @@ func TestNewRouter_HealthCheckNotRateLimited(t *testing.T) {
 	router.ServeHTTP(findCountryRec, findCountryReq)
 
 	assert.Equal(t, http.StatusTooManyRequests, findCountryRec.Code)
+}
+
+func TestNewRouter_UnknownRouteReturnsJSON404(t *testing.T) {
+	router := httpapi.NewRouter(fakeLocator{}, fakeLimiter{allow: true}, fakeLimiter{allow: true})
+
+	req := httptest.NewRequest(http.MethodGet, "/nope", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+	assert.Equal(t, "application/json", rec.Header().Get("Content-Type"))
+
+	var body map[string]string
+	require.NoError(t, json.NewDecoder(rec.Body).Decode(&body))
+	assert.NotEmpty(t, body["error"])
+}
+
+func TestNewRouter_WrongMethodReturnsJSON405(t *testing.T) {
+	router := httpapi.NewRouter(fakeLocator{}, fakeLimiter{allow: true}, fakeLimiter{allow: true})
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/find-country", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusMethodNotAllowed, rec.Code)
+	assert.Equal(t, "application/json", rec.Header().Get("Content-Type"))
+
+	var body map[string]string
+	require.NoError(t, json.NewDecoder(rec.Body).Decode(&body))
+	assert.NotEmpty(t, body["error"])
 }
