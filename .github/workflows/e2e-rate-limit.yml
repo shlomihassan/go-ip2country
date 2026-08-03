@@ -1,0 +1,55 @@
+name: E2E Rate Limit
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  rate-limit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - run: docker build -t go-ip2country:ci .
+
+      - name: Run container
+        run: |
+          docker run -d --name go-ip2country \
+            -p 8080:8080 \
+            -e RATE_LIMIT_GLOBAL_RPS=100 \
+            -e RATE_LIMIT_PER_IP_RPS=1 \
+            go-ip2country:ci
+
+      - name: Wait for readiness
+        run: |
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:8080/healthz && exit 0
+            sleep 1
+          done
+          echo "server did not become ready in time"
+          exit 1
+
+      - name: Verify per-IP rate limit is enforced
+        run: |
+          status1=$(curl -s -o /dev/null -w '%{http_code}' 'http://localhost:8080/v1/find-country?ip=2.22.233.255')
+          status2=$(curl -s -o /dev/null -w '%{http_code}' 'http://localhost:8080/v1/find-country?ip=2.22.233.255')
+          echo "first request: $status1, second request: $status2"
+
+          if [ "$status1" != "200" ]; then
+            echo "expected first request to succeed with 200, got $status1"
+            exit 1
+          fi
+          if [ "$status2" != "429" ]; then
+            echo "expected second request within the same window to be rate limited with 429, got $status2"
+            exit 1
+          fi
+
+      - name: Container logs
+        if: failure()
+        run: docker logs go-ip2country
+
+      - name: Stop container
+        if: always()
+        run: docker rm -f go-ip2country
