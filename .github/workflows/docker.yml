@@ -6,9 +6,36 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
+  test:
+    uses: ./.github/workflows/test.yml
+
   build:
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: docker build .
+
+      - name: Build image
+        run: docker build -t go-ip2country:${{ github.sha }} .
+
+      - name: Log in to GHCR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push to GHCR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        run: |
+          IMAGE=ghcr.io/${{ github.repository }}
+          docker tag go-ip2country:${{ github.sha }} "$IMAGE:${{ github.sha }}"
+          docker tag go-ip2country:${{ github.sha }} "$IMAGE:latest"
+          docker push "$IMAGE:${{ github.sha }}"
+          docker push "$IMAGE:latest"
