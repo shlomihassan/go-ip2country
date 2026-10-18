@@ -3,7 +3,7 @@ module go-ip2country
 go 1.26.5
 
 require (
-	github.com/go-chi/chi/v5 v5.3.1
+	github.com/go-chi/chi/v5 v5.5.0
 	github.com/stretchr/testify v1.11.1
 )
 
